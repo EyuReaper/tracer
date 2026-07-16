@@ -42,6 +42,10 @@ export interface ConfidenceResult {
   signals: DateSignal[];
 }
 
+export interface CachedResult{
+  result: ConfidenceResult;
+  timestamp: number;
+}
 export interface BackgroundMessage {
   type: 'PAGE_METADATA';
   payload: PageMetadata;

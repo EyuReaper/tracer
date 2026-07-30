@@ -51,6 +51,7 @@ export default function App() {
   const [result, setResult] = useState<ConfidenceResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -64,6 +65,15 @@ export default function App() {
           setLoading(false);
           return;
         }
+        if (!tab.url?.startsWith('http')) {
+          setLoading(false);
+          console.log('serverless page')
+          return;
+        } else if (tab.url) {
+          setUrl(tab.url);
+          console.log(tab.url)
+        }
+
 
         browser.tabs.sendMessage(tab.id, { type: 'GET_METADATA' }, (response) => {
           if (browser.runtime.lastError) {
@@ -75,6 +85,8 @@ export default function App() {
             setResult(response);
           }
           setLoading(false);
+
+
         });
       } catch {
         setError('Extension error');
@@ -99,6 +111,28 @@ export default function App() {
       </div>
     );
   }
+
+  if (url?.startsWith('chrome://')) {
+    return (
+      <div className='w-[360px] p-6 bg-zinc-950 text-white min-h-[200px]'>
+        <div className='text-violet-500 text-sm'>Built-in internal page Detected</div>
+      </div>
+    )
+  } else if (url?.startsWith('file://')) {
+    return (
+      <div className='w-[360px] p-6 bg-zinc-950 text-white min-h-[200px]'>
+        <div className='text-zinc-500 text-sm'>file storage link detected</div>
+      </div>
+    )
+  } else if (url?.startsWith('about:')) {
+    return (
+      <div className='w-[360px] p-6 bg-zinc-950 text-white min-h-[200px]'>
+        <div className='text-zinc-500 text-sm'>about:blank page detected</div>
+      </div>
+    )
+  }
+
+
 
   if (!result) {
     return (

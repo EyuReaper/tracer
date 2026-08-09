@@ -3,8 +3,8 @@ import type {
   DateSignal,
   PageMetadata,
   SignalSource,
-} from '../types';
-import { SIGNAL_WEIGHTS } from '../types';
+} from "../types";
+import { SIGNAL_WEIGHTS } from "../types";
 
 function parseDate(dateStr: string | null): Date | null {
   if (!dateStr) return null;
@@ -15,20 +15,17 @@ function parseDate(dateStr: string | null): Date | null {
 function calculateTimeSpanDays(dates: Date[]): number {
   if (dates.length < 2) return 0;
   const sorted = dates.sort((a, b) => a.getTime() - b.getTime());
-  const ms =
-    sorted[sorted.length - 1].getTime() - sorted[0].getTime();
+  const ms = sorted[sorted.length - 1].getTime() - sorted[0].getTime();
   return ms / (1000 * 60 * 60 * 24);
 }
 
-function getConfidenceLevel(score: number): 'high' | 'medium' | 'low' {
-  if (score >= 0.7) return 'high';
-  if (score >= 0.4) return 'medium';
-  return 'low';
+function getConfidenceLevel(score: number): "high" | "medium" | "low" {
+  if (score >= 0.7) return "high";
+  if (score >= 0.4) return "medium";
+  return "low";
 }
 
-export function computeConfidence(
-  metadata: PageMetadata,
-): ConfidenceResult {
+export function computeConfidence(metadata: PageMetadata): ConfidenceResult {
   const validSignals: DateSignal[] = metadata.signals.filter(
     (s) => s.date !== null,
   );
@@ -36,7 +33,7 @@ export function computeConfidence(
   if (validSignals.length === 0) {
     return {
       score: 0,
-      level: 'low',
+      level: "low",
       earliestDate: null,
       latestDate: null,
       signals: metadata.signals,
@@ -59,9 +56,7 @@ export function computeConfidence(
 
   const score = Math.max(0, Math.min(1, rawScore - divergencePenalty));
 
-  const sorted = [...parsedDates].sort(
-    (a, b) => a.getTime() - b.getTime(),
-  );
+  const sorted = [...parsedDates].sort((a, b) => a.getTime() - b.getTime());
 
   return {
     score,

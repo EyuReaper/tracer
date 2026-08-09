@@ -1,4 +1,4 @@
-import type { DateSignal, PageMetadata } from '../src/types';
+import type { DateSignal, PageMetadata } from "../src/types";
 
 function extractMetaTags(): DateSignal {
   const selectors = [
@@ -14,35 +14,45 @@ function extractMetaTags(): DateSignal {
 
   for (const sel of selectors) {
     const el = document.querySelector(sel);
-    const content = el?.getAttribute('content');
+    const content = el?.getAttribute("content");
     if (content && !isNaN(Date.parse(content))) {
       return {
-        source: 'meta_tags',
+        source: "meta_tags",
         date: new Date(content).toISOString(),
         raw: content,
         reliability: 1,
+        status: "found",
       };
     }
   }
 
-  return { source: 'meta_tags', date: null, raw: null, reliability: 0 };
+  return {
+    source: "meta_tags",
+    date: null,
+    raw: null,
+    reliability: 0,
+    status: "not_found",
+  };
 }
 
 function extractJsonLd(): DateSignal {
-  const scripts = document.querySelectorAll('script[type="application/ld+json"]');
-  const dateFields = ['datePublished', 'dateCreated', 'dateModified'];
+  const scripts = document.querySelectorAll(
+    'script[type="application/ld+json"]',
+  );
+  const dateFields = ["datePublished", "dateCreated", "dateModified"];
 
   for (const script of scripts) {
     try {
-      const data = JSON.parse(script.textContent ?? '');
+      const data = JSON.parse(script.textContent ?? "");
       for (const field of dateFields) {
         const val = data[field];
         if (val && !isNaN(Date.parse(val))) {
           return {
-            source: 'schema_org',
+            source: "schema_org",
             date: new Date(val).toISOString(),
             raw: String(val),
             reliability: 1,
+            status: "found",
           };
         }
       }
@@ -51,20 +61,33 @@ function extractJsonLd(): DateSignal {
     }
   }
 
-  return { source: 'schema_org', date: null, raw: null, reliability: 0 };
+  return {
+    source: "schema_org",
+    date: null,
+    raw: null,
+    reliability: 0,
+    status: "not_found",
+  };
 }
 
 function extractLastModified(): DateSignal {
   const header = document.lastModified;
   if (header && !isNaN(Date.parse(header))) {
     return {
-      source: 'http_last_modified',
+      source: "http_last_modified",
       date: new Date(header).toISOString(),
       raw: header,
       reliability: 1,
+      status: "found",
     };
   }
-  return { source: 'http_last_modified', date: null, raw: null, reliability: 0 };
+  return {
+    source: "http_last_modified",
+    date: null,
+    raw: null,
+    reliability: 0,
+    status: "not_found",
+  };
 }
 
 export function extractPageMetadata() {
@@ -83,17 +106,17 @@ export function extractPageMetadata() {
 
 let lastMetadata: PageMetadata | null = null;
 export default defineContentScript({
-  matches: ['<all_urls>'],
+  matches: ["<all_urls>"],
   main() {
     lastMetadata = extractPageMetadata();
     browser.runtime.sendMessage({
-      type: 'PAGE_METADATA',
+      type: "PAGE_METADATA",
       payload: lastMetadata,
     });
     browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message.type === 'GET_METADATA' && lastMetadata) {
+      if (message.type === "GET_METADATA" && lastMetadata) {
         sendResponse(lastMetadata);
       }
-    })
+    });
   },
 });

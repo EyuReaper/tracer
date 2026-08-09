@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import type { ConfidenceResult, DateSignal } from '../../src/types';
-import { SIGNAL_LABELS, SIGNAL_WEIGHTS } from '../../src/types';
+import { useCallback, useEffect, useState } from 'react';
+import type { ConfidenceResult, DateSignal, Settings } from '../../src/types';
+import { DEFAULT_SETTINGS, SIGNAL_LABELS, SIGNAL_WEIGHTS } from '../../src/types';
+import { getSettings, setSettings } from '../../src/utils/settings';
 import { formatAge, formatDate } from '../../src/utils/age';
 
 const LEVEL_STYLES: Record<string, string> = {
@@ -19,6 +20,7 @@ function SignalRow({ signal }: { signal: DateSignal }) {
   const label = SIGNAL_LABELS[signal.source] ?? signal.source;
   const weight = SIGNAL_WEIGHTS[signal.source] ?? 0;
   const has = signal.date !== null;
+  const skipped = signal.status === 'skipped';
 
   return (
     <div className="flex items-center justify-between text-sm py-1.5 border-b border-zinc-800 last:border-0">
@@ -26,13 +28,42 @@ function SignalRow({ signal }: { signal: DateSignal }) {
         <span
           className={`inline-block w-2 h-2 rounded-full ${has ? 'bg-emerald-400' : 'bg-zinc-600'}`}
         />
-        <span className="text-zinc-300">{label}</span>
+        <span className={skipped ? 'text-zinc-500' : 'text-zinc-300'}>{label}</span>
         <span className="text-zinc-600 text-xs">{Math.round(weight * 100)}%</span>
       </div>
       <span className="text-zinc-400 text-xs font-mono">
-        {has ? formatDate(signal.date) : '—'}
+        {has ? formatDate(signal.date) : skipped ? 'Off' : '—'}
       </span>
     </div>
+  );
+}
+
+function NetworkToggle({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-zinc-800 cursor-pointer">
+      <span>
+        <span className="block text-xs text-zinc-400">Network lookups</span>
+        <span className="block text-[10px] text-zinc-600">
+          Query Wayback Machine and sitemap.xml
+        </span>
+      </span>
+      <input
+        type="checkbox"
+        checked={enabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="peer sr-only"
+      />
+      <span
+        aria-hidden="true"
+        className="relative w-9 h-5 shrink-0 rounded-full bg-zinc-700 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:rounded-full after:bg-white after:transition-transform peer-checked:bg-emerald-500 peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-400"
+      />
+    </label>
   );
 }
 
@@ -52,49 +83,65 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [url, setUrl] = useState<string | null>(null);
+  const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
+
+  const scan = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [tab] = await browser.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (!tab?.id) {
+        setError('No active tab found');
+        setLoading(false);
+        return;
+      }
+      if (!tab.url?.startsWith('http')) {
+        setLoading(false);
+        console.log('serverless page')
+        return;
+      } else if (tab.url) {
+        setUrl(tab.url);
+        console.log(tab.url)
+      }
+
+
+      browser.tabs.sendMessage(tab.id, { type: 'GET_METADATA' }, (response) => {
+        if (browser.runtime.lastError) {
+          setError('Could not connect to page');
+          setLoading(false);
+          return;
+        }
+        if (response) {
+          setResult(response);
+        }
+        setLoading(false);
+
+
+      });
+    } catch {
+      setError('Extension error');
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [tab] = await browser.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        if (!tab?.id) {
-          setError('No active tab found');
-          setLoading(false);
-          return;
-        }
-        if (!tab.url?.startsWith('http')) {
-          setLoading(false);
-          console.log('serverless page')
-          return;
-        } else if (tab.url) {
-          setUrl(tab.url);
-          console.log(tab.url)
-        }
+    getSettings().then(setSettingsState);
+    scan();
+  }, [scan]);
 
-
-        browser.tabs.sendMessage(tab.id, { type: 'GET_METADATA' }, (response) => {
-          if (browser.runtime.lastError) {
-            setError('Could not connect to page');
-            setLoading(false);
-            return;
-          }
-          if (response) {
-            setResult(response);
-          }
-          setLoading(false);
-
-
-        });
-      } catch {
-        setError('Extension error');
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
+  // Persist first, then re-scan so the background recomputes under the new
+  // setting instead of serving the cache entry stamped with the old one.
+  const handleToggle = useCallback(
+    async (enabled: boolean) => {
+      setSettingsState((prev) => ({ ...prev, networkLookups: enabled }));
+      await setSettings({ networkLookups: enabled });
+      await scan();
+    },
+    [scan],
+  );
 
   if (loading) {
     return (
@@ -138,6 +185,10 @@ export default function App() {
     return (
       <div className="w-[360px] p-6 bg-zinc-950 text-white min-h-[200px]">
         <div className="text-zinc-500 text-sm">No data available</div>
+        <NetworkToggle
+          enabled={settings.networkLookups}
+          onChange={handleToggle}
+        />
       </div>
     );
   }
@@ -183,6 +234,11 @@ export default function App() {
           <SignalRow key={signal.source} signal={signal} />
         ))}
       </div>
+
+      <NetworkToggle
+        enabled={settings.networkLookups}
+        onChange={handleToggle}
+      />
     </div>
   );
 }

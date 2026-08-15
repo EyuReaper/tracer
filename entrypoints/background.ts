@@ -153,8 +153,10 @@ async function processMetadata(
       ])
     : [skippedSignal("wayback_machine"), skippedSignal("sitemap_lastmod")];
 
-  metadata.signals.push(waybackSignal, sitemapSignal);
-  const result = computeConfidence(metadata);
+  const result = computeConfidence({
+    ...metadata,
+    signals: [...metadata.signals, waybackSignal, sitemapSignal],
+  });
 
   // Persist to storage
   await writeCacheEntry(metadata.url, {
@@ -171,12 +173,21 @@ export default defineBackground(() => {
     (
       message: BackgroundMessage,
       _sender,
-      sendResponse: (response: ConfidenceResult) => void,
+      sendResponse: (response?: ConfidenceResult) => void,
     ) => {
       if (message.type === "PAGE_METADATA") {
         processMetadata(message.payload).then((result) => {
           sendResponse(result);
         });
+        return true;
+      }
+      if (message.type === "GET_RESULT") {
+        browser.tabs
+          .sendMessage(message.payload.tabId, { type: "GET_METADATA" })
+          .then((metadata) => processMetadata(metadata))
+          .then((result) => sendResponse(result))
+          .catch(() => sendResponse(undefined));
+
         return true;
       }
     },

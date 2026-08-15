@@ -62,10 +62,9 @@ export interface CachedResult {
    *  is only reusable while it still matches the current setting. */
   networkLookups: boolean;
 }
-export interface BackgroundMessage {
-  type: "PAGE_METADATA";
-  payload: PageMetadata;
-}
+export type BackgroundMessage =
+  | { type: "PAGE_METADATA"; payload: PageMetadata }
+  | { type: "GET_RESULT"; payload: { url: string; tabId: number } };
 
 export interface BackgroundResponse {
   type: "CONFIDENCE_RESULT";

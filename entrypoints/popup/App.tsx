@@ -1,38 +1,46 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { ConfidenceResult, DateSignal, Settings } from '../../src/types';
-import { DEFAULT_SETTINGS, SIGNAL_LABELS, SIGNAL_WEIGHTS } from '../../src/types';
-import { getSettings, setSettings } from '../../src/utils/settings';
-import { formatAge, formatDate } from '../../src/utils/age';
+import { useCallback, useEffect, useState } from "react";
+import type { ConfidenceResult, DateSignal, Settings } from "../../src/types";
+import {
+  DEFAULT_SETTINGS,
+  SIGNAL_LABELS,
+  SIGNAL_WEIGHTS,
+} from "../../src/types";
+import { getSettings, setSettings } from "../../src/utils/settings";
+import { formatAge, formatDate } from "../../src/utils/age";
 
 const LEVEL_STYLES: Record<string, string> = {
-  high: 'bg-emerald-500',
-  medium: 'bg-amber-500',
-  low: 'bg-red-500',
+  high: "bg-emerald-500",
+  medium: "bg-amber-500",
+  low: "bg-red-500",
 };
 
 const LEVEL_TEXT: Record<string, string> = {
-  high: 'High Confidence',
-  medium: 'Medium Confidence',
-  low: 'Low Confidence',
+  high: "High Confidence",
+  medium: "Medium Confidence",
+  low: "Low Confidence",
 };
 
 function SignalRow({ signal }: { signal: DateSignal }) {
   const label = SIGNAL_LABELS[signal.source] ?? signal.source;
   const weight = SIGNAL_WEIGHTS[signal.source] ?? 0;
   const has = signal.date !== null;
-  const skipped = signal.status === 'skipped';
+  const skipped = signal.status === "skipped";
 
   return (
     <div className="flex items-center justify-between text-sm py-1.5 border-b border-zinc-800 last:border-0">
       <div className="flex items-center gap-2">
         <span
-          className={`inline-block w-2 h-2 rounded-full ${has ? 'bg-emerald-400' : 'bg-zinc-600'}`}
+          className={`inline-block w-2 h-2 rounded-full ${has ? "bg-emerald-400" : "bg-zinc-600"}`}
         />
-        <span className={skipped ? 'text-zinc-500' : 'text-zinc-300'}>{label}</span>
-        <span className="text-zinc-600 text-xs">{Math.round(weight * 100)}%</span>
+        <span className={skipped ? "text-zinc-500" : "text-zinc-300"}>
+          {label}
+        </span>
+        <span className="text-zinc-600 text-xs">
+          {Math.round(weight * 100)}%
+        </span>
       </div>
       <span className="text-zinc-400 text-xs font-mono">
-        {has ? formatDate(signal.date) : skipped ? 'Off' : '—'}
+        {has ? formatDate(signal.date) : skipped ? "Off" : "—"}
       </span>
     </div>
   );
@@ -94,35 +102,31 @@ export default function App() {
         currentWindow: true,
       });
       if (!tab?.id) {
-        setError('No active tab found');
+        setError("No active tab found");
         setLoading(false);
         return;
       }
-      if (!tab.url?.startsWith('http')) {
+      if (!tab.url?.startsWith("http")) {
         setLoading(false);
-        console.log('serverless page')
+        console.log("serverless page");
         return;
       } else if (tab.url) {
         setUrl(tab.url);
-        console.log(tab.url)
+        console.log(tab.url);
       }
 
-
-      browser.tabs.sendMessage(tab.id, { type: 'GET_METADATA' }, (response) => {
-        if (browser.runtime.lastError) {
-          setError('Could not connect to page');
-          setLoading(false);
-          return;
-        }
-        if (response) {
-          setResult(response);
-        }
-        setLoading(false);
-
-
+      const response = await browser.runtime.sendMessage({
+        type: "GET_RESULT",
+        payload: { url: tab.url, tabId: tab.id },
       });
+      if (response) {
+        setResult(response);
+      } else {
+        setError("No data available for this page");
+      }
+      setLoading(false);
     } catch {
-      setError('Extension error');
+      setError("Extension error");
       setLoading(false);
     }
   }, []);
@@ -159,27 +163,27 @@ export default function App() {
     );
   }
 
-  if (url?.startsWith('chrome://')) {
+  if (url?.startsWith("chrome://")) {
     return (
-      <div className='w-[360px] p-6 bg-zinc-950 text-white min-h-[200px]'>
-        <div className='text-violet-500 text-sm'>Built-in internal page Detected</div>
+      <div className="w-[360px] p-6 bg-zinc-950 text-white min-h-[200px]">
+        <div className="text-violet-500 text-sm">
+          Built-in internal page Detected
+        </div>
       </div>
-    )
-  } else if (url?.startsWith('file://')) {
+    );
+  } else if (url?.startsWith("file://")) {
     return (
-      <div className='w-[360px] p-6 bg-zinc-950 text-white min-h-[200px]'>
-        <div className='text-zinc-500 text-sm'>file storage link detected</div>
+      <div className="w-[360px] p-6 bg-zinc-950 text-white min-h-[200px]">
+        <div className="text-zinc-500 text-sm">file storage link detected</div>
       </div>
-    )
-  } else if (url?.startsWith('about:')) {
+    );
+  } else if (url?.startsWith("about:")) {
     return (
-      <div className='w-[360px] p-6 bg-zinc-950 text-white min-h-[200px]'>
-        <div className='text-zinc-500 text-sm'>about:blank page detected</div>
+      <div className="w-[360px] p-6 bg-zinc-950 text-white min-h-[200px]">
+        <div className="text-zinc-500 text-sm">about:blank page detected</div>
       </div>
-    )
+    );
   }
-
-
 
   if (!result) {
     return (

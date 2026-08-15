@@ -1,13 +1,14 @@
-import { defineConfig } from 'wxt';
-import tailwindcss from '@tailwindcss/vite';
+import { defineConfig } from "wxt";
+import tailwindcss from "@tailwindcss/vite";
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
-  modules: ['@wxt-dev/module-react'],
+  modules: ["@wxt-dev/module-react"],
   // `browser.storage.local` is only available when the permission is declared —
   // WXT only auto-adds it for its own `wxt/storage` wrapper, which we don't use.
   manifest: {
-    permissions: ['storage'],
+    permissions: ["storage"],
+    host_permissions: ["<all_urls>"],
   },
   vite: () => ({
     plugins: [tailwindcss()],

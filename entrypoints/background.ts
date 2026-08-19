@@ -192,4 +192,11 @@ export default defineBackground(() => {
       }
     },
   );
+  // listen to SPA navigation
+  browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    //if url changes, send message to content script in that tab
+    if (changeInfo.url) {
+      browser.tabs.sendMessage(tabId, { type: "URL_CHANGED" }).catch(() => {});
+    }
+  });
 });

@@ -7,7 +7,7 @@ export default defineConfig({
   // `browser.storage.local` is only available when the permission is declared —
   // WXT only auto-adds it for its own `wxt/storage` wrapper, which we don't use.
   manifest: {
-    permissions: ["storage"],
+    permissions: ["storage, tabs"],
     host_permissions: ["<all_urls>"],
   },
   vite: () => ({

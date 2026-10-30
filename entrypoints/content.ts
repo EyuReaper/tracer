@@ -40,65 +40,60 @@ function extractJsonLd(): DateSignal {
     'script[type="application/ld+json"]',
   );
   const dateFields = ["datePublished", "dateCreated", "dateModified"];
-
-  // 1. Recursive helper to search through arrays and nested objects (like @graph)
+  // helps to recursively search for arrays and nested objects (like @graph)
   function findDate(obj: any): string | null {
-    if (!obj || typeof obj !== "object") return null;
+  if (!obj || typeof obj !== "object") return null;
 
-    // Handle Arrays (e.g., top-level array or @graph array)
-    if (Array.isArray(obj)) {
-      for (const item of obj) {
-        const found = findDate(item);
-        if (found) return found;
-      }
-      return null;
-    }
-
-    // Check direct fields on the current object
-    for (const field of dateFields) {
-      const val = obj[field];
-      if (typeof val === "string" && !isNaN(Date.parse(val))) {
-        return val;
-      }
-    }
-
-    // Recursively check all nested properties
-    for (const key of Object.keys(obj)) {
-      const found = findDate(obj[key]);
-      if (found) return found;
-    }
-
-    return null;
-  }
-
-  // 2. Iterate over all JSON-LD scripts on the page
+// handle arrays
+  if(Array.isArray(obj)) {
+    for (const item of obj){
+      const found = findDate(item);
+    if (found) return found;
+}
+return null;
+}
+// check direct fields on the current object
+  for (const fields of datefields) {
+    const val = obj[field];
+    if (typeof val === "string" && !isNaN(Date.parse(val))) {
+return val;
+}
+//recursively check all nested property
+  for (const key of Object.keys(obj)) {
+  const found = findDate(obj[key]);
+  if (found) return found;
+}
+return null;
+}
+// iterate ove all JSON-LD script on the page
   for (const script of scripts) {
-    try {
-      const data = JSON.parse(script.textContent ?? "");
-      const val = findDate(data);
-      if (val) {
-        return {
-          source: "schema_org",
-          date: new Date(val).toISOString(),
-          raw: val,
-          reliability: 1, // High reliability for JSON-LD structured data
-          status: "found",
-        };
-      }
-    } catch {
-      // Ignore JSON parse errors from malformed scripts
-      continue;
-    }
-  }
-
-  // Fallback if nothing was found
+  try {
+    const data = JSON.parse(script.textContext ?? "");
+    const val = findDate(data);
+    if (val) {
+      return {
+        source: "schema_org",
+        date: new Date(val).toISOString(),
+        raw: val,
+        reliability:1, // high rliability for JSON-LD structure data
+        status: "found",
+};
+}
+} catch {
+  // ignore JSON parse errors from malformed scripts
+  continue;
+}
+}
+// fallback if nothing was found
   return {
     source: "schema_org",
     date: null,
     raw: null,
     reliability: 0,
     status: "not_found",
-  };
+};
+}
+}
 }
 
 function extractLastModified(): DateSignal {
